@@ -4,8 +4,8 @@ import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
   LineElement, BarElement, Title, Tooltip, Legend, Filler,
 } from "chart.js";
-import { Line } from "react-chartjs-2";
-import { TrendingUp, AlertTriangle } from "lucide-react";
+import { Line, Bar } from "react-chartjs-2";
+import { TrendingUp, AlertTriangle, ExternalLink, Wifi, WifiOff } from "lucide-react";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler);
 
@@ -13,12 +13,25 @@ export default function SentimentPage() {
   const { data: metrics } = trpc.crip.metrics.list.useQuery({ module: "sentiment" });
   const { data: keywords } = trpc.crip.sentiment.keywords.useQuery();
   const { data: feed } = trpc.crip.sentiment.feed.useQuery();
+  const { data: bingData } = trpc.crip.sentiment.bingFeed.useQuery();
   const [activeTopic, setActiveTopic] = useState<"all" | "marriage" | "abuse">("all");
   const { data: trendData } = trpc.crip.sentiment.trend.useQuery({ topic: activeTopic });
 
   const mData = metrics || [];
   const kw = keywords || [];
-  const fd = feed || [];
+  const bingItems = bingData?.items ?? [];
+  const bingLive = bingData?.live ?? false;
+  const bingTrend = bingData?.trend ?? [];
+
+  // Use Bing feed when live, otherwise fall back to DB feed then static
+  const fd = bingLive && bingItems.length ? bingItems : (feed?.length ? feed : [
+    { id: 1, content: "Perkahwinan kanak-kanak mesti dihentikan — undang-undang tidak mencukupi perlindungan", sentiment: "negative", riskLevel: "high", source: "Twitter/X", region: "Kelantan", tags: "child marriage,Kelantan", engagement: "1.2K RT · 2h ago" },
+    { id: 2, content: "UNICEF Malaysia: New child protection programme launched under National Strategic Plan 2020–2025", sentiment: "positive", riskLevel: "none", source: "Berita Harian", region: "National", tags: "UNICEF,policy", engagement: "National · 5h ago" },
+    { id: 3, content: "Kes penganiayaan kanak-kanak di TASKA meningkat — perlu tindakan segera", sentiment: "negative", riskLevel: "high", source: "Facebook", region: "National", tags: "TASKA,JKM", engagement: "890 shares · 8h ago" },
+    { id: 4, content: "Child marriages down 37% from 2019 to 2023 — Minister Nancy Shukri cites National Strategic Plan success", sentiment: "neutral", riskLevel: "none", source: "FMT", region: "National", tags: "policy progress", engagement: "National · 12h ago" },
+    { id: 5, content: "KASIH Kanak-Kanak programme reaches 174,079 students in 337 schools — community response positive", sentiment: "positive", riskLevel: "none", source: "KPWKM official", region: "National", tags: "prevention", engagement: "Facebook · 24h ago" },
+  ]);
+
   const trend = trendData?.length ? trendData : [
     { dayIndex: 1,  date: "May 1",  topic: activeTopic, sentimentScore: "0.42" },
     { dayIndex: 2,  date: "May 2",  topic: activeTopic, sentimentScore: "0.38" },
@@ -75,6 +88,26 @@ export default function SentimentPage() {
     },
   };
 
+  // Bing News volume time series chart
+  const newsVolumeChart = {
+    labels: bingTrend.map(d => d.date),
+    datasets: [
+      { label: "Child marriage", data: bingTrend.map(d => d.marriage), backgroundColor: "rgba(226,75,74,0.7)", borderRadius: 3 },
+      { label: "Abuse", data: bingTrend.map(d => d.abuse), backgroundColor: "rgba(186,117,23,0.7)", borderRadius: 3 },
+      { label: "General", data: bingTrend.map(d => d.general), backgroundColor: "rgba(55,138,221,0.5)", borderRadius: 3 },
+    ],
+  };
+
+  const newsVolumeOpts: any = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: true, labels: { font: { size: 9 }, boxWidth: 8, color: "#888" } } },
+    scales: {
+      x: { stacked: true, ticks: { color: "#888", font: { size: 8 }, maxTicksLimit: 7 }, grid: { display: false } },
+      y: { stacked: true, ticks: { color: "#888", font: { size: 9 }, stepSize: 1 }, grid: { color: "rgba(128,128,128,0.1)" } },
+    },
+  };
+
   const dotColor = (sentiment: string | null, risk: string | null) => {
     if (risk === "high") return "#E24B4A";
     if (sentiment === "negative") return "#E24B4A";
@@ -103,6 +136,19 @@ export default function SentimentPage() {
           <div className="tt">Discourse NLP monitor · BM + EN</div>
           <div className="tm">NLP pipeline · real-time sentiment & keyword extraction</div>
         </div>
+        <div className="badges">
+          {bingLive ? (
+            <span className="bdg bdg-g" style={{ gap: 4 }}>
+              <Wifi size={9} />
+              LIVE · Bing News
+            </span>
+          ) : (
+            <span className="bdg" style={{ background: "var(--color-background-secondary)", color: "var(--color-text-tertiary)", gap: 4 }}>
+              <WifiOff size={9} />
+              Static data
+            </span>
+          )}
+        </div>
       </div>
       <div className="content">
         <div className="mrow m4">
@@ -122,7 +168,7 @@ export default function SentimentPage() {
 
         <div className="g2">
           <div className="card-d">
-            <div className="ch"><div><div className="ct">30-day sentiment trend</div><div className="cs">Child rights discourse · NLP</div></div></div>
+            <div className="ch"><div><div className="ct">30-day sentiment trend</div><div className="cs">Child rights discourse · NLP pipeline</div></div></div>
             <div className="tab-r">
               {(["all", "marriage", "abuse"] as const).map(t => (
                 <div key={t} className={`tab ${activeTopic === t ? "on" : ""}`} onClick={() => setActiveTopic(t)}>
@@ -136,6 +182,32 @@ export default function SentimentPage() {
             <div className="src">Source: NLP pipeline · simulated on open multilingual corpus</div>
           </div>
 
+          <div className="card-d">
+            <div className="ch">
+              <div>
+                <div className="ct">News attention — 14-day volume</div>
+                <div className="cs">
+                  Bing News · articles/day by topic
+                  {bingLive && <span style={{ marginLeft: 6, background: "rgba(99,153,34,0.15)", color: "#3B6D11", padding: "0 5px", borderRadius: 3, fontSize: 8, fontWeight: 600 }}>LIVE</span>}
+                </div>
+              </div>
+            </div>
+            <div style={{ position: "relative", height: 130 }}>
+              {bingTrend.length > 0 ? (
+                <Bar data={newsVolumeChart} options={newsVolumeOpts} />
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", fontSize: 10, color: "var(--color-text-tertiary)" }}>
+                  Add BING_NEWS_API_KEY to .env to enable live news volume tracking
+                </div>
+              )}
+            </div>
+            <div className="src">
+              Source: Bing News Search API · keywords: perkahwinan kanak-kanak, child marriage, TASKA, hak kanak-kanak
+            </div>
+          </div>
+        </div>
+
+        <div className="g2">
           <div className="card-d">
             <div className="ch"><div><div className="ct">Keyword cloud — BM + EN</div><div className="cs">Top extracted terms this week</div></div></div>
             <div className="kw-cloud">
@@ -171,26 +243,50 @@ export default function SentimentPage() {
             </div>
             <div className="src">Source: NLP extraction · illustrative on open corpus</div>
           </div>
-        </div>
 
-        <div className="card-d">
-          <div className="ch"><div><div className="ct">Classified discourse feed — real-time</div><div className="cs">Bahasa Melayu + English · NLP sentiment tagging</div></div></div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-            {(fd.length ? fd : [
-              { id: 1, content: "Perkahwinan kanak-kanak mesti dihentikan — undang-undang tidak mencukupi perlindungan", sentiment: "negative", riskLevel: "high", source: "Twitter/X", region: "Kelantan", tags: "child marriage,Kelantan", engagement: "1.2K RT · 2h ago" },
-              { id: 2, content: "UNICEF Malaysia: New child protection programme launched under National Strategic Plan 2020–2025", sentiment: "positive", riskLevel: "none", source: "Berita Harian", region: "National", tags: "UNICEF,policy", engagement: "National · 5h ago" },
-              { id: 3, content: "Kes penganiayaan kanak-kanak di TASKA meningkat — perlu tindakan segera", sentiment: "negative", riskLevel: "high", source: "Facebook", region: "National", tags: "TASKA,JKM", engagement: "890 shares · 8h ago" },
-              { id: 4, content: "Child marriages down 37% from 2019 to 2023 — Minister Nancy Shukri cites National Strategic Plan success", sentiment: "neutral", riskLevel: "none", source: "FMT", region: "National", tags: "policy progress", engagement: "National · 12h ago" },
-              { id: 5, content: "KASIH Kanak-Kanak programme reaches 174,079 students in 337 schools — community response positive", sentiment: "positive", riskLevel: "none", source: "KPWKM official", region: "National", tags: "prevention", engagement: "Facebook · 24h ago" },
-            ]).map(item => (
-              <div key={item.id} className="fi">
-                <div className="fd" style={{ background: dotColor(item.sentiment, item.riskLevel) }}></div>
-                <div>
-                  <div className="ft">{item.content} <span className={pillClass(item.sentiment, item.riskLevel)}>{pillText(item.sentiment, item.riskLevel)}</span></div>
-                  <div className="fm">{item.source} · {item.region} · {item.engagement} · {(item.tags || "").split(",").map((t, i) => <span key={i} className="data-chip" style={{ marginLeft: 2 }}>{t}</span>)}</div>
+          <div className="card-d">
+            <div className="ch">
+              <div>
+                <div className="ct">Classified discourse feed</div>
+                <div className="cs">
+                  {bingLive ? "Bing News · live · BM + EN · NLP sentiment tagging" : "Bahasa Melayu + English · NLP sentiment tagging"}
                 </div>
               </div>
-            ))}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {(fd as any[]).map((item, idx) => (
+                <div key={item.id ?? idx} className="fi">
+                  <div className="fd" style={{ background: dotColor(item.sentiment, item.riskLevel) }}></div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="ft">
+                      {item.content}
+                      {item.url && (
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 5, color: "var(--color-text-tertiary)", verticalAlign: "middle" }}>
+                          <ExternalLink size={9} />
+                        </a>
+                      )}
+                      {" "}<span className={pillClass(item.sentiment, item.riskLevel)}>{pillText(item.sentiment, item.riskLevel)}</span>
+                    </div>
+                    <div className="fm">
+                      {item.source} · {item.region} · {item.engagement}
+                      {(item.tags || "").split(",").map((t: string, i: number) => (
+                        <span key={i} className="data-chip" style={{ marginLeft: 2 }}>{t.trim()}</span>
+                      ))}
+                    </div>
+                    {item.snippet && (
+                      <div style={{ fontSize: 9, color: "var(--color-text-tertiary)", marginTop: 2, lineHeight: 1.4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any }}>
+                        {item.snippet}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {bingLive && (
+              <div className="src" style={{ marginTop: 6 }}>
+                Source: Bing News Search API · cached 1h · {bingItems.length} articles retrieved
+              </div>
+            )}
           </div>
         </div>
       </div>

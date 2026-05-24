@@ -3,6 +3,7 @@ import { eq, desc, asc, and } from "drizzle-orm";
 import { createRouter, publicQuery, adminQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import * as schema from "@db/schema";
+import { fetchBingNewsFeed, buildNewsTrend } from "./lib/bing-news";
 
 export const cripRouter = createRouter({
   // ── Key Metrics ───────────────────────────────────────────────
@@ -230,6 +231,19 @@ export const cripRouter = createRouter({
         await db.delete(schema.discourseFeed).where(eq(schema.discourseFeed.id, input.id));
         return { success: true };
       }),
+
+    bingFeed: publicQuery.query(async () => {
+      const apiKey = process.env.BING_NEWS_API_KEY ?? "";
+      if (!apiKey) return { items: [], trend: [], live: false };
+      try {
+        const items = await fetchBingNewsFeed(apiKey);
+        const trend = buildNewsTrend(items);
+        return { items, trend, live: true, cachedAt: new Date().toISOString() };
+      } catch (e) {
+        console.error("[bing-news] fetch failed:", e);
+        return { items: [], trend: [], live: false };
+      }
+    }),
   }),
 
   // ── Data Sources ──────────────────────────────────────────────
