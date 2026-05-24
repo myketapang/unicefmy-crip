@@ -120,6 +120,7 @@
     height: 100vh;
     background: var(--color-background-tertiary);
     overflow: hidden;
+    position: relative;
   }
 
   .sidebar {
@@ -129,6 +130,83 @@
     border-right: 0.5px solid var(--color-border-tertiary);
     display: flex;
     flex-direction: column;
+    transition: width 0.22s ease;
+    overflow: hidden;
+  }
+
+  .sidebar.sb-open { width: 188px; }
+  .sidebar.sb-closed { width: 0; border-right: none; }
+
+  .sb-close-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-tertiary);
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .sb-close-btn:hover { color: var(--color-text-primary); }
+
+  .sb-reopen-btn {
+    position: fixed;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-left: none;
+    border-radius: 0 6px 6px 0;
+    padding: 8px 6px;
+    cursor: pointer;
+    color: var(--color-text-tertiary);
+    display: flex;
+    align-items: center;
+    z-index: 50;
+  }
+  .sb-reopen-btn:hover { color: var(--color-text-primary); }
+
+  .sb-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 40;
+  }
+
+  .main-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  .mob-topbar {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--color-background-primary);
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    flex-shrink: 0;
+  }
+
+  .mob-menu-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    padding: 2px;
+  }
+  .mob-menu-btn:hover { color: var(--color-text-primary); }
+
+  .mob-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-primary);
   }
 
   .logo {
@@ -555,7 +633,8 @@
   }
 
   @media (max-width: 768px) {
-    .sidebar { width: 160px; }
+    .sidebar.sb-open { position: fixed; top: 0; left: 0; height: 100vh; z-index: 50; width: 188px; }
+    .mob-topbar { display: flex; }
     .m4 { grid-template-columns: 1fr; }
     .risk-grid { grid-template-columns: 1fr; }
     .topbar { flex-direction: column; align-items: flex-start; gap: 4px; }

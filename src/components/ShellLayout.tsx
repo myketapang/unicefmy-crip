@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -14,6 +14,8 @@ import {
   UserCircle,
   Moon,
   Sun,
+  Menu,
+  ChevronLeft,
 } from "lucide-react";
 
 const navItems = [
@@ -35,22 +37,50 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuth();
   const [isDark, setIsDark] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
+
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth >= 768) setSidebarOpen(true);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const toggleDark = () => {
     setIsDark(!isDark);
     document.documentElement.classList.toggle("dark");
   };
 
+  const isMobile = () => window.innerWidth < 768;
+
+  const handleNav = (path: string) => {
+    navigate(path);
+    if (isMobile()) setSidebarOpen(false);
+  };
+
   const isAdmin = user?.role === "admin";
 
   return (
     <div className="shell">
+      {/* Mobile backdrop */}
+      {sidebarOpen && isMobile() && (
+        <div className="sb-overlay" onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* Sidebar */}
-      <div className="sidebar">
+      <div className={`sidebar ${sidebarOpen ? "sb-open" : "sb-closed"}`}>
         <div className="logo">
-          <div className="logo-badge">UNICEF MY · Phase 1</div>
-          <div className="logo-t">Child Rights Intelligence</div>
-          <div className="logo-s">Platform prototype v2</div>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <div>
+              <div className="logo-badge">UNICEF MY · Phase 1</div>
+              <div className="logo-t">Child Rights Intelligence</div>
+              <div className="logo-s">Platform prototype v2</div>
+            </div>
+            <button className="sb-close-btn" onClick={() => setSidebarOpen(false)} aria-label="Close sidebar">
+              <ChevronLeft size={14} />
+            </button>
+          </div>
         </div>
 
         <div className="ns">Core modules</div>
@@ -58,11 +88,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
           const Icon = item.icon;
           const isOn = location.pathname === item.path;
           return (
-            <div
-              key={item.id}
-              className={`ni ${isOn ? "on" : ""}`}
-              onClick={() => navigate(item.path)}
-            >
+            <div key={item.id} className={`ni ${isOn ? "on" : ""}`} onClick={() => handleNav(item.path)}>
               <Icon size={14} />
               {item.label}
             </div>
@@ -76,11 +102,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
               const Icon = item.icon;
               const isOn = location.pathname === item.path;
               return (
-                <div
-                  key={item.id}
-                  className={`ni ${isOn ? "on" : ""}`}
-                  onClick={() => navigate(item.path)}
-                >
+                <div key={item.id} className={`ni ${isOn ? "on" : ""}`} onClick={() => handleNav(item.path)}>
                   <Icon size={14} />
                   {item.label}
                 </div>
@@ -89,7 +111,6 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
           </>
         )}
 
-        {/* User section */}
         <div style={{ marginTop: "auto" }}>
           {isAuthenticated && user && (
             <div style={{ padding: "8px 10px", borderTop: "0.5px solid var(--color-border-tertiary)" }}>
@@ -100,10 +121,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
                   <span style={{ background: "var(--color-background-info)", color: "var(--color-text-info)", padding: "0 4px", borderRadius: "3px", fontSize: "8px" }}>ADMIN</span>
                 )}
               </div>
-              <div
-                onClick={logout}
-                style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", color: "var(--color-text-tertiary)", cursor: "pointer", padding: "2px 0" }}
-              >
+              <div onClick={logout} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", color: "var(--color-text-tertiary)", cursor: "pointer", padding: "2px 0" }}>
                 <LogOut size={10} />
                 Sign out
               </div>
@@ -123,9 +141,29 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
         </div>
       </div>
 
-      {/* Main */}
-      <div className="main">
-        {children}
+      {/* Desktop re-open button (visible when sidebar collapsed) */}
+      {!sidebarOpen && (
+        <button className="sb-reopen-btn" onClick={() => setSidebarOpen(true)} aria-label="Open sidebar">
+          <Menu size={14} />
+        </button>
+      )}
+
+      {/* Main wrapper */}
+      <div className="main-wrap">
+        {/* Mobile topbar */}
+        <div className="mob-topbar">
+          <button className="mob-menu-btn" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+            <Menu size={18} />
+          </button>
+          <span className="mob-title">Child Rights Intelligence</span>
+          <div onClick={toggleDark} style={{ cursor: "pointer", marginLeft: "auto", color: "var(--color-text-tertiary)" }}>
+            {isDark ? <Sun size={14} /> : <Moon size={14} />}
+          </div>
+        </div>
+
+        <div className="main">
+          {children}
+        </div>
       </div>
     </div>
   );
