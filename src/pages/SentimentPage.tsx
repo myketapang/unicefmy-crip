@@ -101,14 +101,14 @@ export default function SentimentPage() {
       <div className="topbar">
         <div>
           <div className="tt">Discourse NLP monitor · BM + EN</div>
-          <div className="tm">NarrativeGPT NLP pipeline · real-time sentiment & keyword extraction</div>
+          <div className="tm">NLP pipeline · real-time sentiment & keyword extraction</div>
         </div>
       </div>
       <div className="content">
         <div className="mrow m4">
           {(mData.length ? mData : [
             { id: 1, label: "Corpus monitored (est. 7d)", value: "48.2K", subtext: "Twitter/X + Facebook BM+EN" },
-            { id: 2, label: "Bahasa Melayu share", value: "71%", subtext: "NarrativeGPT multilingual" },
+            { id: 2, label: "Bahasa Melayu share", value: "71%", subtext: "Multilingual NLP pipeline" },
             { id: 3, label: "Child marriage mentions", value: "+340%", subtext: "7-day spike · Kelantan cluster", status: "critical" },
             { id: 4, label: "Overall sentiment", value: "+0.42", subtext: "−1 to +1 scale", status: "positive" },
           ]).map(m => (
@@ -122,7 +122,7 @@ export default function SentimentPage() {
 
         <div className="g2">
           <div className="card-d">
-            <div className="ch"><div><div className="ct">30-day sentiment trend</div><div className="cs">Child rights discourse · NarrativeGPT NLP</div></div></div>
+            <div className="ch"><div><div className="ct">30-day sentiment trend</div><div className="cs">Child rights discourse · NLP</div></div></div>
             <div className="tab-r">
               {(["all", "marriage", "abuse"] as const).map(t => (
                 <div key={t} className={`tab ${activeTopic === t ? "on" : ""}`} onClick={() => setActiveTopic(t)}>
@@ -133,7 +133,7 @@ export default function SentimentPage() {
             <div style={{ position: "relative", height: 130 }}>
               <Line data={trendChart} options={trendOpts} />
             </div>
-            <div className="src">Source: NarrativeGPT NLP pipeline · simulated on open multilingual corpus</div>
+            <div className="src">Source: NLP pipeline · simulated on open multilingual corpus</div>
           </div>
 
           <div className="card-d">
@@ -169,7 +169,7 @@ export default function SentimentPage() {
                 <div className="ab" style={{ fontSize: 10 }}><strong>"rumah perlindungan"</strong> — shelter conditions, rising concern discourse. Monitor.</div>
               </div>
             </div>
-            <div className="src">Source: VRIMACPro NLP extraction · illustrative on open corpus</div>
+            <div className="src">Source: NLP extraction · illustrative on open corpus</div>
           </div>
         </div>
 

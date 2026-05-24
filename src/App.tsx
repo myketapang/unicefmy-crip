@@ -7,6 +7,7 @@ import PovertyPage from "@/pages/PovertyPage";
 import FacilitiesPage from "@/pages/FacilitiesPage";
 import SentimentPage from "@/pages/SentimentPage";
 import SourcesPage from "@/pages/SourcesPage";
+import GlossaryPage from "@/pages/GlossaryPage";
 import AdminPage from "@/pages/AdminPage";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/NotFound";
@@ -72,6 +73,14 @@ export default function App() {
         element={
           <DashboardWrapper>
             <SourcesPage />
+          </DashboardWrapper>
+        }
+      />
+      <Route
+        path="/glossary"
+        element={
+          <DashboardWrapper>
+            <GlossaryPage />
           </DashboardWrapper>
         }
       />

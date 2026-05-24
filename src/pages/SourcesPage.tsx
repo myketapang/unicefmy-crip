@@ -32,7 +32,7 @@ export default function SourcesPage() {
       <div className="topbar">
         <div>
           <div className="tt">Data source registry · {src.length || 7} verified sources</div>
-          <div className="tm">JKM · DOSM · KPWKM · UNICEF MY · BMJ Open · PDRM · NarrativeGPT</div>
+          <div className="tm">JKM · DOSM · KPWKM · UNICEF MY · BMJ Open · PDRM</div>
         </div>
       </div>
       <div className="content">

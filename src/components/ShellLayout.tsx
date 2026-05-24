@@ -9,6 +9,7 @@ import {
   Building2,
   MessagesSquare,
   Database,
+  BookOpen,
   Users,
   LogOut,
   UserCircle,
@@ -26,6 +27,7 @@ const navItems = [
   { id: "facilities", label: "Care facilities", icon: Building2, path: "/facilities" },
   { id: "sentiment", label: "Discourse NLP", icon: MessagesSquare, path: "/sentiment" },
   { id: "sources", label: "Data sources", icon: Database, path: "/sources" },
+  { id: "glossary", label: "Glossary", icon: BookOpen, path: "/glossary" },
 ];
 
 const platformNavItems = [
