@@ -11,11 +11,11 @@ const googleTrends = _require("google-trends-api") as {
   }) => Promise<string>;
 };
 
-// BM + EN keywords tracked in Malaysia
+// Broader English terms with actual Google Trends volume in MY
 const KEYWORDS = [
-  "child marriage Malaysia",
-  "perkahwinan kanak-kanak",
-  "penganiayaan kanak-kanak",
+  "child marriage",
+  "child abuse",
+  "child rights",
 ];
 
 export interface TrendPoint {

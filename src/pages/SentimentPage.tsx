@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/providers/trpc";
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
@@ -19,6 +19,32 @@ export default function SentimentPage() {
   const [activeTopic, setActiveTopic] = useState<"all" | "marriage" | "abuse">("all");
   const { data: dbTrendData } = trpc.crip.sentiment.trend.useQuery({ topic: activeTopic });
 
+  // ── Static JSON fallback (built at deploy time, works with no backend) ──
+  const [staticTrends, setStaticTrends] = useState<{ date: string; isoDate: string; interest: number; normalized: number }[]>([]);
+  const [netlifyFeed, setNetlifyFeed] = useState<any[]>([]);
+  const [netlifyLive, setNetlifyLive] = useState(false);
+
+  useEffect(() => {
+    // Always try to load build-time trends data
+    fetch("/data/trends.json")
+      .then(r => r.ok ? r.json() : null)
+      .then(json => { if (json?.live && json?.data?.length) setStaticTrends(json.data); })
+      .catch(() => {});
+
+    // In production (no tRPC backend on Netlify), fetch from Netlify Function
+    if (import.meta.env.PROD) {
+      fetch("/.netlify/functions/news?type=all")
+        .then(r => r.ok ? r.json() : null)
+        .then(json => {
+          if (json?.items?.length) {
+            setNetlifyFeed(json.items.map((i: any) => ({ ...i, _src: "netlify" })));
+            setNetlifyLive(true);
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
+
   const mData = metrics || [];
   const kw = keywords || [];
 
@@ -31,8 +57,9 @@ export default function SentimentPage() {
   const alertsItems = alertsData?.items ?? [];
   const alertsLive = alertsData?.live ?? false;
 
-  // ── Trend chart: Google Trends → DB sentiment → static ───────
-  const useGoogleTrends = gTrendsLive && gTrends.length > 0;
+  // ── Trend chart: tRPC live → static JSON (build-time) → DB → hardcoded ──
+  const useGoogleTrends = (gTrendsLive && gTrends.length > 0) || staticTrends.length > 0;
+  const activeTrendsData = (gTrendsLive && gTrends.length > 0) ? gTrends : staticTrends;
   const useDbTrend = !useGoogleTrends && (dbTrendData?.length ?? 0) > 0;
 
   const staticTrend = [
@@ -49,13 +76,13 @@ export default function SentimentPage() {
   ];
 
   const trendLabels = useGoogleTrends
-    ? gTrends.map(d => d.date)
+    ? activeTrendsData.map(d => d.date)
     : useDbTrend
       ? (dbTrendData ?? []).map(d => d.date ?? "")
       : staticTrend.map(d => d.date);
 
   const trendValues = useGoogleTrends
-    ? gTrends.map(d => d.normalized)
+    ? activeTrendsData.map(d => d.normalized)
     : useDbTrend
       ? (dbTrendData ?? []).map(d => Number(d.sentimentScore))
       : staticTrend.map(d => d.val);
@@ -114,12 +141,14 @@ export default function SentimentPage() {
     },
   };
 
-  // ── Merged feed: Google Alerts + Bing > DB > static ──────────
-  const mergedLive = alertsLive || bingLive;
-  const liveFeedItems: any[] = [
-    ...alertsItems.map(i => ({ ...i, _src: "alerts" })),
-    ...bingItems.filter(b => !alertsItems.some((a: any) => a.url === b.url)).map(i => ({ ...i, _src: "bing" })),
-  ].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+  // ── Merged feed: Netlify Fn (prod) | Alerts+Bing (dev) > DB > static ────
+  const mergedLive = netlifyLive || alertsLive || bingLive;
+  const liveFeedItems: any[] = netlifyLive
+    ? netlifyFeed
+    : [
+        ...alertsItems.map((i: any) => ({ ...i, _src: "alerts" })),
+        ...bingItems.filter(b => !alertsItems.some((a: any) => a.url === b.url)).map(i => ({ ...i, _src: "bing" })),
+      ].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
   const fd: any[] = mergedLive && liveFeedItems.length
     ? liveFeedItems
@@ -167,12 +196,13 @@ export default function SentimentPage() {
           <div className="tm">NLP pipeline · real-time sentiment & keyword extraction</div>
         </div>
         <div className="badges" style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {gTrendsLive
+          {useGoogleTrends
             ? <span className="bdg bdg-g" style={{ gap: 3 }}><Wifi size={9} />Google Trends</span>
             : <span className="bdg" style={{ background: "var(--color-background-secondary)", color: "var(--color-text-tertiary)", gap: 3 }}><WifiOff size={9} />Trends offline</span>
           }
-          {bingLive && <span className="bdg bdg-g" style={{ gap: 3 }}><Wifi size={9} />Bing News</span>}
-          {alertsLive && <span className="bdg bdg-g" style={{ gap: 3 }}><Wifi size={9} />G·Alerts</span>}
+          {netlifyLive && <span className="bdg bdg-g" style={{ gap: 3 }}><Wifi size={9} />Netlify Feed</span>}
+          {!netlifyLive && bingLive && <span className="bdg bdg-g" style={{ gap: 3 }}><Wifi size={9} />Bing News</span>}
+          {!netlifyLive && alertsLive && <span className="bdg bdg-g" style={{ gap: 3 }}><Wifi size={9} />G·Alerts</span>}
         </div>
       </div>
 

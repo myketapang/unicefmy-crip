@@ -1,0 +1,192 @@
+{
+  "data": [
+    {
+      "date": "25 Apr 2026",
+      "isoDate": "25 Apr",
+      "interest": 0,
+      "normalized": 0
+    },
+    {
+      "date": "26 Apr 2026",
+      "isoDate": "26 Apr",
+      "interest": 0,
+      "normalized": 0
+    },
+    {
+      "date": "27 Apr 2026",
+      "isoDate": "27 Apr",
+      "interest": 0,
+      "normalized": 0
+    },
+    {
+      "date": "28 Apr 2026",
+      "isoDate": "28 Apr",
+      "interest": 0,
+      "normalized": 0
+    },
+    {
+      "date": "29 Apr 2026",
+      "isoDate": "29 Apr",
+      "interest": 0,
+      "normalized": 0
+    },
+    {
+      "date": "30 Apr 2026",
+      "isoDate": "30 Apr",
+      "interest": 0,
+      "normalized": 0
+    },
+    {
+      "date": "1 May 2026",
+      "isoDate": "1 May",
+      "interest": 0,
+      "normalized": 0
+    },
+    {
+      "date": "2 May 2026",
+      "isoDate": "2 May",
+      "interest": 100,
+      "normalized": 1
+    },
+    {
+      "date": "3 May 2026",
+      "isoDate": "3 May",
+      "interest": 0,
+      "normalized": 0
+    },
+    {
+      "date": "4 May 2026",
+      "isoDate": "4 May",
+      "interest": 0,
+      "normalized": 0
+    },
+    {
+      "date": "5 May 2026",
+      "isoDate": "5 May",
+      "interest": 0,
+      "normalized": 0
+    },
+    {
+      "date": "6 May 2026",
+      "isoDate": "6 May",
+      "interest": 0,
+      "normalized": 0
+    },
+    {
+      "date": "7 May 2026",
+      "isoDate": "7 May",
+      "interest": 0,
+      "normalized": 0
+    },
+    {
+      "date": "8 May 2026",
+      "isoDate": "8 May",
+      "interest": 0,
+      "normalized": 0
+    },
+    {
+      "date": "9 May 2026",
+      "isoDate": "9 May",
+      "interest": 0,
+      "normalized": 0
+    },
+    {
+      "date": "10 May 2026",
+      "isoDate": "10 May",
+      "interest": 0,
+      "normalized": 0
+    },
+    {
+      "date": "11 May 2026",
+      "isoDate": "11 May",
+      "interest": 12,
+      "normalized": 0.12
+    },
+    {
+      "date": "12 May 2026",
+      "isoDate": "12 May",
+      "interest": 15,
+      "normalized": 0.15
+    },
+    {
+      "date": "13 May 2026",
+      "isoDate": "13 May",
+      "interest": 12,
+      "normalized": 0.12
+    },
+    {
+      "date": "14 May 2026",
+      "isoDate": "14 May",
+      "interest": 10,
+      "normalized": 0.1
+    },
+    {
+      "date": "15 May 2026",
+      "isoDate": "15 May",
+      "interest": 12,
+      "normalized": 0.12
+    },
+    {
+      "date": "16 May 2026",
+      "isoDate": "16 May",
+      "interest": 14,
+      "normalized": 0.14
+    },
+    {
+      "date": "17 May 2026",
+      "isoDate": "17 May",
+      "interest": 13,
+      "normalized": 0.13
+    },
+    {
+      "date": "18 May 2026",
+      "isoDate": "18 May",
+      "interest": 15,
+      "normalized": 0.15
+    },
+    {
+      "date": "19 May 2026",
+      "isoDate": "19 May",
+      "interest": 11,
+      "normalized": 0.11
+    },
+    {
+      "date": "20 May 2026",
+      "isoDate": "20 May",
+      "interest": 11,
+      "normalized": 0.11
+    },
+    {
+      "date": "21 May 2026",
+      "isoDate": "21 May",
+      "interest": 14,
+      "normalized": 0.14
+    },
+    {
+      "date": "22 May 2026",
+      "isoDate": "22 May",
+      "interest": 10,
+      "normalized": 0.1
+    },
+    {
+      "date": "23 May 2026",
+      "isoDate": "23 May",
+      "interest": 15,
+      "normalized": 0.15
+    },
+    {
+      "date": "24 May 2026",
+      "isoDate": "24 May",
+      "interest": 15,
+      "normalized": 0.15
+    },
+    {
+      "date": "25 May 2026",
+      "isoDate": "25 May",
+      "interest": 13,
+      "normalized": 0.13
+    }
+  ],
+  "fetchedAt": "2026-05-25T06:48:01.583Z",
+  "live": true
+}
