@@ -1,10 +1,10 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 import { eq, desc, asc, and } from "drizzle-orm";
 import { createRouter, publicQuery, adminQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import * as schema from "@db/schema";
 import { fetchBingNewsFeed, buildNewsTrend } from "./lib/bing-news";
-import { fetchGoogleTrends30d } from "./lib/google-trends";
+import { fetchGoogleTrends30d, fetchGoogleTrendingTopics } from "./lib/google-trends";
 import { fetchGoogleAlertsFeeds } from "./lib/google-alerts";
 
 export const cripRouter = createRouter({
@@ -236,14 +236,23 @@ export const cripRouter = createRouter({
 
     bingFeed: publicQuery.query(async () => {
       const apiKey = process.env.BING_NEWS_API_KEY ?? "";
-      if (!apiKey) return { items: [], trend: [], live: false };
       try {
         const items = await fetchBingNewsFeed(apiKey);
         const trend = buildNewsTrend(items);
-        return { items, trend, live: true, cachedAt: new Date().toISOString() };
+        return { items, trend, live: items.length > 0, source: apiKey ? "api" : "rss", cachedAt: new Date().toISOString() };
       } catch (e) {
         console.error("[bing-news] fetch failed:", e);
-        return { items: [], trend: [], live: false };
+        return { items: [], trend: [], live: false, source: "none" };
+      }
+    }),
+
+    trendingTopics: publicQuery.query(async () => {
+      try {
+        const topics = await fetchGoogleTrendingTopics();
+        return { topics, live: topics.length > 0, count: topics.length };
+      } catch (e) {
+        console.error("[google-trending] fetch failed:", e);
+        return { topics: [], live: false, count: 0 };
       }
     }),
 
@@ -345,3 +354,4 @@ export const cripRouter = createRouter({
       }),
   }),
 });
+

@@ -1,6 +1,8 @@
-const ENDPOINT = "https://api.bing.microsoft.com/v7.0/news/search";
+﻿const API_ENDPOINT = "https://api.bing.microsoft.com/v7.0/news/search";
 
-// BM + EN keywords for child rights monitoring
+// RSS endpoint — no API key needed, returns standard RSS 2.0
+const RSS_ENDPOINT = "https://www.bing.com/news/search";
+
 const QUERIES = [
   "perkahwinan kanak-kanak Malaysia",
   "child marriage Malaysia",
@@ -22,31 +24,39 @@ interface BingResponse {
   value?: BingArticle[];
 }
 
-// In-memory cache: 1 hour to stay within free quota (1,000 tx/month)
-let _cache: { items: FeedItem[]; at: number } | null = null;
+let _apiCache: { items: FeedItem[]; at: number } | null = null;
+let _rssCache: { items: FeedItem[]; at: number } | null = null;
 const CACHE_TTL = 3_600_000;
 
-async function fetchQuery(apiKey: string, q: string): Promise<BingArticle[]> {
-  const url = new URL(ENDPOINT);
-  url.searchParams.set("q", q);
-  url.searchParams.set("mkt", "en-MY");
-  url.searchParams.set("count", "5");
-  url.searchParams.set("freshness", "Week");
-  url.searchParams.set("safeSearch", "Moderate");
-  url.searchParams.set("textDecorations", "false");
+const BROWSER_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "Accept-Language": "en-MY,en;q=0.9,ms;q=0.8",
+};
 
-  const res = await fetch(url.toString(), {
-    headers: { "Ocp-Apim-Subscription-Key": apiKey },
-  });
-  if (!res.ok) throw new Error(`Bing ${res.status} for "${q}": ${await res.text()}`);
-  const json: BingResponse = await res.json();
-  return json.value ?? [];
+// ── Inline RSS parser helpers ─────────────────────────────────────────────────
+
+function rssTag(xml: string, tag: string): string {
+  return xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"))?.[1]
+    ?.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/<[^>]+>/g, "")
+    .trim() ?? "";
 }
 
-const NEG_TERMS = ["perkahwinan kanak-kanak", "kahwin bawah umur", "penganiayaan", "abuse", "jenayah", "mangsa", "kematian", "death", "victim", "violence", "arrested", "charged", "assault", "tragedi", "dera"];
-const POS_TERMS = ["perlindungan", "protection", "programme", "program", "bantuan", "berjaya", "success", "improved", "reduced", "achievement", "initiative", "launched"];
-const MARRIAGE_TERMS = ["perkahwinan", "marriage", "kahwin"];
-const ABUSE_TERMS = ["penganiayaan", "abuse", "taska", "violence", "assault", "jenayah", "dera"];
+function rssAttr(xml: string, tag: string, attr: string): string {
+  return xml.match(new RegExp(`<${tag}[^>]*\\s${attr}=["']([^"']+)["']`, "i"))?.[1]?.trim() ?? "";
+}
+
+function splitItems(xml: string): string[] {
+  return xml.split(/<item[^>]*>/i).slice(1).map(p => p.split(/<\/item>/i)[0] ?? "");
+}
+
+// ── Sentiment classifiers ────────────────────────────────────────────────────
+
+const NEG_TERMS = ["perkahwinan kanak-kanak","kahwin bawah umur","penganiayaan","abuse","jenayah","mangsa","kematian","death","victim","violence","arrested","charged","assault","tragedi","dera"];
+const POS_TERMS = ["perlindungan","protection","programme","program","bantuan","berjaya","success","improved","reduced","achievement","initiative","launched"];
+const MARRIAGE_TERMS = ["perkahwinan","marriage","kahwin"];
+const ABUSE_TERMS = ["penganiayaan","abuse","taska","violence","assault","jenayah","dera"];
 
 export interface FeedItem {
   content: string;
@@ -62,67 +72,109 @@ export interface FeedItem {
   topic: "marriage" | "abuse" | "general";
 }
 
-function classify(a: BingArticle): FeedItem {
-  const text = `${a.name} ${a.description}`.toLowerCase();
-
+function makeItem(title: string, desc: string, url: string, source: string, published: string): FeedItem {
+  const text = `${title} ${desc}`.toLowerCase();
   const isNeg = NEG_TERMS.some(t => text.includes(t));
   const isPos = POS_TERMS.some(t => text.includes(t));
-  const sentiment = isNeg ? "negative" : isPos ? "positive" : "neutral";
-
-  const isMarriage = MARRIAGE_TERMS.some(t => text.includes(t));
-  const isAbuse = ABUSE_TERMS.some(t => text.includes(t));
-  const riskLevel: FeedItem["riskLevel"] = isNeg && (isMarriage || isAbuse) ? "high" : isNeg ? "medium" : "none";
-
+  const isMar = MARRIAGE_TERMS.some(t => text.includes(t));
+  const isAbu = ABUSE_TERMS.some(t => text.includes(t));
   const tagArr = [
-    isMarriage && "child marriage",
-    isAbuse && "abuse",
-    text.includes("jkm") && "JKM",
-    text.includes("taska") && "TASKA",
+    isMar && "child marriage", isAbu && "abuse",
+    text.includes("jkm") && "JKM", text.includes("taska") && "TASKA",
     text.includes("unicef") && "UNICEF",
     (text.includes("poverty") || text.includes("kemiskinan")) && "poverty",
   ].filter(Boolean) as string[];
-  const tags = tagArr.join(",") || "child rights";
-
-  const source = a.provider?.[0]?.name ?? "Bing News";
-  const ms = Date.now() - new Date(a.datePublished).getTime();
-  const h = Math.round(ms / 3_600_000);
-  const engagement = h < 24 ? `${h}h ago` : `${Math.ceil(h / 24)}d ago`;
-
+  const ms  = published ? Date.now() - new Date(published).getTime() : 0;
+  const h   = Math.round(ms / 3_600_000);
   return {
-    content: a.name,
-    snippet: a.description,
-    url: a.url,
-    sentiment,
-    riskLevel,
-    source,
-    region: "Malaysia",
-    tags,
-    engagement,
-    publishedAt: a.datePublished,
-    topic: isMarriage ? "marriage" : isAbuse ? "abuse" : "general",
+    content: title, snippet: desc.slice(0, 300), url,
+    sentiment: isNeg ? "negative" : isPos ? "positive" : "neutral",
+    riskLevel: isNeg && (isMar || isAbu) ? "high" : isNeg ? "medium" : "none",
+    source, region: "Malaysia",
+    tags: tagArr.join(",") || "child rights",
+    engagement: h < 24 ? `${h}h ago` : `${Math.ceil(h / 24)}d ago`,
+    publishedAt: published || new Date().toISOString(),
+    topic: isMar ? "marriage" : isAbu ? "abuse" : "general",
   };
 }
 
-export async function fetchBingNewsFeed(apiKey: string): Promise<FeedItem[]> {
-  if (_cache && Date.now() - _cache.at < CACHE_TTL) return _cache.items;
+// ── Bing API (paid) ───────────────────────────────────────────────────────────
 
-  // Sequential to avoid rate-limit burst; 6 queries × 5 results = up to 30 articles/hour
+async function fetchViaAPI(apiKey: string): Promise<FeedItem[]> {
   const all: BingArticle[] = [];
   const seen = new Set<string>();
   for (const q of QUERIES) {
     try {
-      const results = await fetchQuery(apiKey, q);
-      for (const r of results) {
+      const url = new URL(API_ENDPOINT);
+      url.searchParams.set("q", q); url.searchParams.set("mkt", "en-MY");
+      url.searchParams.set("count", "5"); url.searchParams.set("freshness", "Week");
+      url.searchParams.set("safeSearch", "Moderate"); url.searchParams.set("textDecorations", "false");
+      const res = await fetch(url.toString(), { headers: { "Ocp-Apim-Subscription-Key": apiKey } });
+      if (!res.ok) continue;
+      const json: BingResponse = await res.json();
+      for (const r of json.value ?? []) {
         if (!seen.has(r.url)) { seen.add(r.url); all.push(r); }
       }
-    } catch {
-      // continue with remaining queries on partial failure
-    }
+    } catch { /* continue */ }
+  }
+  all.sort((a, b) => new Date(b.datePublished).getTime() - new Date(a.datePublished).getTime());
+  return all.map(a => makeItem(a.name, a.description, a.url, a.provider?.[0]?.name ?? "Bing News", a.datePublished));
+}
+
+// ── Bing RSS (no API key required) ───────────────────────────────────────────
+
+async function fetchQueryRSS(q: string): Promise<FeedItem[]> {
+  const url = `${RSS_ENDPOINT}?q=${encodeURIComponent(q)}&format=RSS`;
+  const res = await fetch(url, { headers: BROWSER_HEADERS });
+  if (!res.ok) throw new Error(`Bing RSS ${res.status} for "${q}"`);
+  const xml = await res.text();
+  return splitItems(xml).map(item => {
+    const title = rssTag(item, "title");
+    const link  = rssTag(item, "link") || rssAttr(item, "link", "href");
+    if (!title || !link) return null;
+    const desc   = rssTag(item, "description");
+    const source = rssTag(item, "source") || rssAttr(item, "source", "url") || "Bing News";
+    const pub    = rssTag(item, "pubDate");
+    const isoDate = pub ? new Date(pub).toISOString() : new Date().toISOString();
+    return makeItem(title, desc, link, source, isoDate);
+  }).filter((x): x is FeedItem => x !== null);
+}
+
+async function fetchViaRSS(): Promise<FeedItem[]> {
+  const all: FeedItem[] = [];
+  const seen = new Set<string>();
+  for (const q of QUERIES) {
+    try {
+      const items = await fetchQueryRSS(q);
+      for (const item of items) {
+        if (!seen.has(item.url)) { seen.add(item.url); all.push(item); }
+      }
+      // Small delay to be polite
+      await new Promise(r => setTimeout(r, 300));
+    } catch { /* continue */ }
+  }
+  return all.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+export async function fetchBingNewsFeed(apiKey: string): Promise<FeedItem[]> {
+  // API path (paid key)
+  if (apiKey) {
+    if (_apiCache && Date.now() - _apiCache.at < CACHE_TTL) return _apiCache.items;
+    try {
+      const items = await fetchViaAPI(apiKey);
+      if (items.length > 0) {
+        _apiCache = { items, at: Date.now() };
+        return items;
+      }
+    } catch { /* fall through to RSS */ }
   }
 
-  all.sort((a, b) => new Date(b.datePublished).getTime() - new Date(a.datePublished).getTime());
-  const items = all.map(classify);
-  _cache = { items, at: Date.now() };
+  // RSS fallback (no key required)
+  if (_rssCache && Date.now() - _rssCache.at < CACHE_TTL) return _rssCache.items;
+  const items = await fetchViaRSS();
+  _rssCache = { items, at: Date.now() };
   return items;
 }
 
@@ -130,19 +182,15 @@ export async function fetchBingNewsFeed(apiKey: string): Promise<FeedItem[]> {
 export function buildNewsTrend(items: FeedItem[]) {
   const days: Record<string, { date: string; marriage: number; abuse: number; general: number }> = {};
   const now = new Date();
-
   for (let i = 13; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const key = d.toISOString().slice(0, 10);
-    const label = `${d.getDate()}/${d.getMonth() + 1}`;
-    days[key] = { date: label, marriage: 0, abuse: 0, general: 0 };
+    days[key] = { date: `${d.getDate()}/${d.getMonth() + 1}`, marriage: 0, abuse: 0, general: 0 };
   }
-
   for (const item of items) {
     const key = item.publishedAt.slice(0, 10);
     if (days[key]) days[key][item.topic]++;
   }
-
   return Object.values(days);
 }

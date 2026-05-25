@@ -1,10 +1,13 @@
-/**
+﻿/**
  * Standalone Netlify Function — no DB, no heavy deps.
  * Serves Bing News + Google Alerts feed items.
  * GET /.netlify/functions/news?type=bing|alerts|all
  */
 
-const BING_ENDPOINT = "https://api.bing.microsoft.com/v7.0/news/search";
+const BING_API_ENDPOINT = "https://api.bing.microsoft.com/v7.0/news/search";
+const BING_RSS_ENDPOINT = "https://www.bing.com/news/search";
+
+const BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 const BING_QUERIES = [
   "perkahwinan kanak-kanak Malaysia",
   "child marriage Malaysia",
@@ -49,24 +52,61 @@ function classify(title: string, desc: string, url: string, provider: string, pu
     topic: isMar ? "marriage" : isAbu ? "abuse" : "general" };
 }
 
+function rssTag(xml: string, tag: string): string {
+  return xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"))
+    ?.[1]?.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/<[^>]+>/g, "").trim() ?? "";
+}
+
+async function fetchBingQueryRSS(q: string): Promise<Item[]> {
+  const url = `${BING_RSS_ENDPOINT}?q=${encodeURIComponent(q)}&format=RSS`;
+  const res = await fetch(url, { headers: { "User-Agent": BROWSER_UA, "Accept": "application/xml,text/xml" } });
+  if (!res.ok) return [];
+  const xml = await res.text();
+  return xml.split(/<item[^>]*>/i).slice(1).map(block => {
+    const title = rssTag(block, "title");
+    const link  = rssTag(block, "link");
+    if (!title || !link) return null;
+    const desc   = rssTag(block, "description");
+    const source = rssTag(block, "source") || "Bing News";
+    const pub    = rssTag(block, "pubDate");
+    return classify(title, desc, link, source, pub ? new Date(pub).toISOString() : new Date().toISOString());
+  }).filter((x): x is Item => x !== null);
+}
+
 async function fetchBing(apiKey: string): Promise<Item[]> {
   const all: Item[] = []; const seen = new Set<string>();
+
+  if (apiKey) {
+    // Paid API path
+    for (const q of BING_QUERIES) {
+      try {
+        const url = new URL(BING_API_ENDPOINT);
+        url.searchParams.set("q", q); url.searchParams.set("mkt", "en-MY");
+        url.searchParams.set("count", "5"); url.searchParams.set("freshness", "Week");
+        url.searchParams.set("safeSearch", "Moderate"); url.searchParams.set("textDecorations", "false");
+        const res = await fetch(url.toString(), { headers: { "Ocp-Apim-Subscription-Key": apiKey } });
+        if (!res.ok) continue;
+        const json = await res.json() as { value?: { name: string; description: string; url: string; provider: { name: string }[]; datePublished: string }[] };
+        for (const a of json.value ?? []) {
+          if (!seen.has(a.url)) {
+            seen.add(a.url);
+            all.push(classify(a.name, a.description, a.url, a.provider?.[0]?.name ?? "Bing News", a.datePublished));
+          }
+        }
+      } catch { /* continue */ }
+    }
+    if (all.length > 0) return all.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+  }
+
+  // RSS fallback (no API key required)
   for (const q of BING_QUERIES) {
     try {
-      const url = new URL(BING_ENDPOINT);
-      url.searchParams.set("q", q); url.searchParams.set("mkt", "en-MY");
-      url.searchParams.set("count", "5"); url.searchParams.set("freshness", "Week");
-      url.searchParams.set("safeSearch", "Moderate"); url.searchParams.set("textDecorations", "false");
-      const res = await fetch(url.toString(), { headers: { "Ocp-Apim-Subscription-Key": apiKey } });
-      if (!res.ok) continue;
-      const json = await res.json() as { value?: { name: string; description: string; url: string; provider: { name: string }[]; datePublished: string }[] };
-      for (const a of json.value ?? []) {
-        if (!seen.has(a.url)) {
-          seen.add(a.url);
-          all.push(classify(a.name, a.description, a.url, a.provider?.[0]?.name ?? "Bing News", a.datePublished));
-        }
+      const items = await fetchBingQueryRSS(q);
+      for (const item of items) {
+        if (!seen.has(item.url)) { seen.add(item.url); all.push(item); }
       }
-    } catch { /* continue on per-query failure */ }
+      await new Promise(r => setTimeout(r, 200));
+    } catch { /* continue */ }
   }
   return all.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 }
@@ -105,7 +145,7 @@ export const handler = async (event: { queryStringParameters?: Record<string, st
   const alertUrls = (process.env.GOOGLE_ALERTS_RSS_URLS ?? "").split(",").map(u => u.trim()).filter(Boolean);
 
   let items: Item[] = [];
-  if ((type === "bing" || type === "all") && bingKey)
+  if (type === "bing" || type === "all")
     items = [...items, ...(await fetchBing(bingKey).catch(() => []))];
   if ((type === "alerts" || type === "all") && alertUrls.length) {
     const alertItems = await fetchAlerts(alertUrls).catch(() => []);
@@ -124,3 +164,4 @@ export const handler = async (event: { queryStringParameters?: Record<string, st
     body: JSON.stringify({ items, live: items.length > 0, count: items.length }),
   };
 };
+
