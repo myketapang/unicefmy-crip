@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router";
+﻿import { Routes, Route } from "react-router";
 import ShellLayout from "@/components/ShellLayout";
 import OverviewPage from "@/pages/OverviewPage";
 import MarriagePage from "@/pages/MarriagePage";
@@ -8,6 +8,7 @@ import FacilitiesPage from "@/pages/FacilitiesPage";
 import SentimentPage from "@/pages/SentimentPage";
 import SourcesPage from "@/pages/SourcesPage";
 import GlossaryPage from "@/pages/GlossaryPage";
+import ParliamentPage from "@/pages/ParliamentPage";
 import AdminPage from "@/pages/AdminPage";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/NotFound";
@@ -85,6 +86,14 @@ export default function App() {
         }
       />
       <Route
+        path="/parliament"
+        element={
+          <DashboardWrapper>
+            <ParliamentPage />
+          </DashboardWrapper>
+        }
+      />
+      <Route
         path="/admin"
         element={
           <DashboardWrapper>
@@ -96,3 +105,5 @@ export default function App() {
     </Routes>
   );
 }
+
+

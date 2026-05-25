@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -10,6 +10,7 @@ import {
   MessagesSquare,
   Database,
   BookOpen,
+  Landmark,
   Users,
   LogOut,
   UserCircle,
@@ -20,14 +21,15 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard, path: "/" },
-  { id: "marriage", label: "Child marriage", icon: Heart, path: "/marriage" },
-  { id: "abuse", label: "Abuse & neglect", icon: ShieldAlert, path: "/abuse" },
-  { id: "poverty", label: "Poverty & risk", icon: TrendingDown, path: "/poverty" },
-  { id: "facilities", label: "Care facilities", icon: Building2, path: "/facilities" },
-  { id: "sentiment", label: "Discourse NLP", icon: MessagesSquare, path: "/sentiment" },
-  { id: "sources", label: "Data sources", icon: Database, path: "/sources" },
-  { id: "glossary", label: "Glossary", icon: BookOpen, path: "/glossary" },
+  { id: "overview",   label: "Overview",       icon: LayoutDashboard, path: "/" },
+  { id: "marriage",   label: "Child marriage",  icon: Heart,           path: "/marriage" },
+  { id: "abuse",      label: "Abuse & neglect", icon: ShieldAlert,     path: "/abuse" },
+  { id: "poverty",    label: "Poverty & risk",  icon: TrendingDown,    path: "/poverty" },
+  { id: "facilities", label: "Care facilities", icon: Building2,       path: "/facilities" },
+  { id: "sentiment",  label: "Discourse NLP",   icon: MessagesSquare,  path: "/sentiment" },
+  { id: "parliament", label: "Hansard",          icon: Landmark,        path: "/parliament" },
+  { id: "sources",    label: "Data sources",    icon: Database,        path: "/sources" },
+  { id: "glossary",   label: "Glossary",         icon: BookOpen,        path: "/glossary" },
 ];
 
 const platformNavItems = [
@@ -170,3 +172,5 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
     </div>
   );
 }
+
+
