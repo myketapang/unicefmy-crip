@@ -12,66 +12,63 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarEleme
 export default function SentimentPage() {
   const { data: metrics } = trpc.crip.metrics.list.useQuery({ module: "sentiment" });
   const { data: keywords } = trpc.crip.sentiment.keywords.useQuery();
-  const { data: feed } = trpc.crip.sentiment.feed.useQuery();
+  const { data: dbFeed } = trpc.crip.sentiment.feed.useQuery();
   const { data: bingData } = trpc.crip.sentiment.bingFeed.useQuery();
+  const { data: alertsData } = trpc.crip.sentiment.alertsFeed.useQuery();
+  const { data: googleTrendData } = trpc.crip.sentiment.googleTrend.useQuery();
   const [activeTopic, setActiveTopic] = useState<"all" | "marriage" | "abuse">("all");
-  const { data: trendData } = trpc.crip.sentiment.trend.useQuery({ topic: activeTopic });
+  const { data: dbTrendData } = trpc.crip.sentiment.trend.useQuery({ topic: activeTopic });
 
   const mData = metrics || [];
   const kw = keywords || [];
+
+  // ── Source availability ───────────────────────────────────────
+  const gTrends = googleTrendData?.data ?? [];
+  const gTrendsLive = googleTrendData?.live ?? false;
   const bingItems = bingData?.items ?? [];
   const bingLive = bingData?.live ?? false;
   const bingTrend = bingData?.trend ?? [];
+  const alertsItems = alertsData?.items ?? [];
+  const alertsLive = alertsData?.live ?? false;
 
-  // Use Bing feed when live, otherwise fall back to DB feed then static
-  const fd = bingLive && bingItems.length ? bingItems : (feed?.length ? feed : [
-    { id: 1, content: "Perkahwinan kanak-kanak mesti dihentikan — undang-undang tidak mencukupi perlindungan", sentiment: "negative", riskLevel: "high", source: "Twitter/X", region: "Kelantan", tags: "child marriage,Kelantan", engagement: "1.2K RT · 2h ago" },
-    { id: 2, content: "UNICEF Malaysia: New child protection programme launched under National Strategic Plan 2020–2025", sentiment: "positive", riskLevel: "none", source: "Berita Harian", region: "National", tags: "UNICEF,policy", engagement: "National · 5h ago" },
-    { id: 3, content: "Kes penganiayaan kanak-kanak di TASKA meningkat — perlu tindakan segera", sentiment: "negative", riskLevel: "high", source: "Facebook", region: "National", tags: "TASKA,JKM", engagement: "890 shares · 8h ago" },
-    { id: 4, content: "Child marriages down 37% from 2019 to 2023 — Minister Nancy Shukri cites National Strategic Plan success", sentiment: "neutral", riskLevel: "none", source: "FMT", region: "National", tags: "policy progress", engagement: "National · 12h ago" },
-    { id: 5, content: "KASIH Kanak-Kanak programme reaches 174,079 students in 337 schools — community response positive", sentiment: "positive", riskLevel: "none", source: "KPWKM official", region: "National", tags: "prevention", engagement: "Facebook · 24h ago" },
-  ]);
+  // ── Trend chart: Google Trends → DB sentiment → static ───────
+  const useGoogleTrends = gTrendsLive && gTrends.length > 0;
+  const useDbTrend = !useGoogleTrends && (dbTrendData?.length ?? 0) > 0;
 
-  const trend = trendData?.length ? trendData : [
-    { dayIndex: 1,  date: "May 1",  topic: activeTopic, sentimentScore: "0.42" },
-    { dayIndex: 2,  date: "May 2",  topic: activeTopic, sentimentScore: "0.38" },
-    { dayIndex: 3,  date: "May 3",  topic: activeTopic, sentimentScore: "0.45" },
-    { dayIndex: 4,  date: "May 4",  topic: activeTopic, sentimentScore: "0.30" },
-    { dayIndex: 5,  date: "May 5",  topic: activeTopic, sentimentScore: "0.15" },
-    { dayIndex: 6,  date: "May 6",  topic: activeTopic, sentimentScore: "-0.10" },
-    { dayIndex: 7,  date: "May 7",  topic: activeTopic, sentimentScore: "-0.32" },
-    { dayIndex: 8,  date: "May 8",  topic: activeTopic, sentimentScore: "-0.48" },
-    { dayIndex: 9,  date: "May 9",  topic: activeTopic, sentimentScore: "-0.55" },
-    { dayIndex: 10, date: "May 10", topic: activeTopic, sentimentScore: "-0.60" },
-    { dayIndex: 11, date: "May 11", topic: activeTopic, sentimentScore: "-0.52" },
-    { dayIndex: 12, date: "May 12", topic: activeTopic, sentimentScore: "-0.38" },
-    { dayIndex: 13, date: "May 13", topic: activeTopic, sentimentScore: "-0.20" },
-    { dayIndex: 14, date: "May 14", topic: activeTopic, sentimentScore: "0.05" },
-    { dayIndex: 15, date: "May 15", topic: activeTopic, sentimentScore: "0.18" },
-    { dayIndex: 16, date: "May 16", topic: activeTopic, sentimentScore: "0.28" },
-    { dayIndex: 17, date: "May 17", topic: activeTopic, sentimentScore: "0.35" },
-    { dayIndex: 18, date: "May 18", topic: activeTopic, sentimentScore: "0.40" },
-    { dayIndex: 19, date: "May 19", topic: activeTopic, sentimentScore: "0.45" },
-    { dayIndex: 20, date: "May 20", topic: activeTopic, sentimentScore: "0.50" },
-    { dayIndex: 21, date: "May 21", topic: activeTopic, sentimentScore: "0.42" },
-    { dayIndex: 22, date: "May 22", topic: activeTopic, sentimentScore: "0.38" },
-    { dayIndex: 23, date: "May 23", topic: activeTopic, sentimentScore: "0.44" },
-    { dayIndex: 24, date: "May 24", topic: activeTopic, sentimentScore: "0.40" },
-    { dayIndex: 25, date: "May 25", topic: activeTopic, sentimentScore: "0.36" },
-    { dayIndex: 26, date: "May 26", topic: activeTopic, sentimentScore: "0.42" },
-    { dayIndex: 27, date: "May 27", topic: activeTopic, sentimentScore: "0.48" },
-    { dayIndex: 28, date: "May 28", topic: activeTopic, sentimentScore: "0.52" },
-    { dayIndex: 29, date: "May 29", topic: activeTopic, sentimentScore: "0.46" },
-    { dayIndex: 30, date: "May 30", topic: activeTopic, sentimentScore: "0.42" },
+  const staticTrend = [
+    { date: "May 1",  val: 0.42 }, { date: "May 2",  val: 0.38 }, { date: "May 3",  val: 0.45 },
+    { date: "May 4",  val: 0.30 }, { date: "May 5",  val: 0.15 }, { date: "May 6",  val: -0.10 },
+    { date: "May 7",  val: -0.32 }, { date: "May 8",  val: -0.48 }, { date: "May 9",  val: -0.55 },
+    { date: "May 10", val: -0.60 }, { date: "May 11", val: -0.52 }, { date: "May 12", val: -0.38 },
+    { date: "May 13", val: -0.20 }, { date: "May 14", val: 0.05 }, { date: "May 15", val: 0.18 },
+    { date: "May 16", val: 0.28 }, { date: "May 17", val: 0.35 }, { date: "May 18", val: 0.40 },
+    { date: "May 19", val: 0.45 }, { date: "May 20", val: 0.50 }, { date: "May 21", val: 0.42 },
+    { date: "May 22", val: 0.38 }, { date: "May 23", val: 0.44 }, { date: "May 24", val: 0.40 },
+    { date: "May 25", val: 0.36 }, { date: "May 26", val: 0.42 }, { date: "May 27", val: 0.48 },
+    { date: "May 28", val: 0.52 }, { date: "May 29", val: 0.46 }, { date: "May 30", val: 0.42 },
   ];
 
+  const trendLabels = useGoogleTrends
+    ? gTrends.map(d => d.date)
+    : useDbTrend
+      ? (dbTrendData ?? []).map(d => d.date ?? "")
+      : staticTrend.map(d => d.date);
+
+  const trendValues = useGoogleTrends
+    ? gTrends.map(d => d.normalized)
+    : useDbTrend
+      ? (dbTrendData ?? []).map(d => Number(d.sentimentScore))
+      : staticTrend.map(d => d.val);
+
+  const trendColor = activeTopic === "marriage" ? "#E24B4A" : activeTopic === "abuse" ? "#BA7517" : "#378ADD";
+
   const trendChart = {
-    labels: trend.map(d => d.date || ""),
+    labels: trendLabels,
     datasets: [{
-      label: "Sentiment",
-      data: trend.map(d => Number(d.sentimentScore)),
-      borderColor: activeTopic === "all" ? "#378ADD" : activeTopic === "marriage" ? "#E24B4A" : "#BA7517",
-      backgroundColor: activeTopic === "all" ? "rgba(55,138,221,0.13)" : activeTopic === "marriage" ? "rgba(226,75,74,0.13)" : "rgba(186,117,23,0.13)",
+      label: useGoogleTrends ? "Search attention" : "Sentiment",
+      data: trendValues,
+      borderColor: trendColor,
+      backgroundColor: trendColor + "22",
       fill: true,
       tension: 0.4,
       pointRadius: 0,
@@ -83,12 +80,21 @@ export default function SentimentPage() {
     maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     scales: {
-      y: { min: -1, max: 1, ticks: { color: "#888", font: { size: 9 }, callback: (v: any) => v > 0 ? `+${v}` : String(v) }, grid: { color: "rgba(128,128,128,0.1)" } },
+      y: {
+        min: useGoogleTrends ? 0 : -1,
+        max: 1,
+        ticks: {
+          color: "#888",
+          font: { size: 9 },
+          callback: (v: any) => useGoogleTrends ? `${Math.round(v * 100)}` : (v > 0 ? `+${v}` : String(v)),
+        },
+        grid: { color: "rgba(128,128,128,0.1)" },
+      },
       x: { ticks: { color: "#888", font: { size: 8 }, maxTicksLimit: 8 }, grid: { display: false } },
     },
   };
 
-  // Bing News volume time series chart
+  // ── Bing volume bar chart ─────────────────────────────────────
   const newsVolumeChart = {
     labels: bingTrend.map(d => d.date),
     datasets: [
@@ -108,6 +114,24 @@ export default function SentimentPage() {
     },
   };
 
+  // ── Merged feed: Google Alerts + Bing > DB > static ──────────
+  const mergedLive = alertsLive || bingLive;
+  const liveFeedItems: any[] = [
+    ...alertsItems.map(i => ({ ...i, _src: "alerts" })),
+    ...bingItems.filter(b => !alertsItems.some((a: any) => a.url === b.url)).map(i => ({ ...i, _src: "bing" })),
+  ].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+
+  const fd: any[] = mergedLive && liveFeedItems.length
+    ? liveFeedItems
+    : (dbFeed?.length ? dbFeed : [
+        { id: 1, content: "Perkahwinan kanak-kanak mesti dihentikan — undang-undang tidak mencukupi perlindungan", sentiment: "negative", riskLevel: "high", source: "Twitter/X", region: "Kelantan", tags: "child marriage,Kelantan", engagement: "1.2K RT · 2h ago" },
+        { id: 2, content: "UNICEF Malaysia: New child protection programme launched under National Strategic Plan 2020–2025", sentiment: "positive", riskLevel: "none", source: "Berita Harian", region: "National", tags: "UNICEF,policy", engagement: "National · 5h ago" },
+        { id: 3, content: "Kes penganiayaan kanak-kanak di TASKA meningkat — perlu tindakan segera", sentiment: "negative", riskLevel: "high", source: "Facebook", region: "National", tags: "TASKA,JKM", engagement: "890 shares · 8h ago" },
+        { id: 4, content: "Child marriages down 37% from 2019 to 2023 — Minister Nancy Shukri cites National Strategic Plan success", sentiment: "neutral", riskLevel: "none", source: "FMT", region: "National", tags: "policy progress", engagement: "National · 12h ago" },
+        { id: 5, content: "KASIH Kanak-Kanak programme reaches 174,079 students in 337 schools — community response positive", sentiment: "positive", riskLevel: "none", source: "KPWKM official", region: "National", tags: "prevention", engagement: "Facebook · 24h ago" },
+      ]);
+
+  // ── Helpers ───────────────────────────────────────────────────
   const dotColor = (sentiment: string | null, risk: string | null) => {
     if (risk === "high") return "#E24B4A";
     if (sentiment === "negative") return "#E24B4A";
@@ -115,18 +139,24 @@ export default function SentimentPage() {
     return "#378ADD";
   };
 
-  const pillClass = (sentiment: string | null, risk: string | null) => {
-    if (risk === "high") return "pill p-hi";
-    if (sentiment === "negative") return "pill p-hi";
-    if (sentiment === "positive") return "pill p-ok";
+  const pillClass = (s: string | null, r: string | null) => {
+    if (r === "high") return "pill p-hi";
+    if (s === "negative") return "pill p-hi";
+    if (s === "positive") return "pill p-ok";
     return "pill p-bl";
   };
 
-  const pillText = (sentiment: string | null, risk: string | null) => {
-    if (risk === "high" && sentiment === "negative") return "Negative · High risk";
-    if (risk === "medium") return "Negative · Monitor";
-    if (sentiment === "positive") return "Positive";
+  const pillText = (s: string | null, r: string | null) => {
+    if (r === "high" && s === "negative") return "Negative · High risk";
+    if (r === "medium") return "Negative · Monitor";
+    if (s === "positive") return "Positive";
     return "Neutral · Policy";
+  };
+
+  const srcBadge = (src?: string) => {
+    if (src === "alerts") return <span style={{ fontSize: 8, background: "rgba(55,138,221,0.15)", color: "#378ADD", padding: "0 4px", borderRadius: 3, marginLeft: 4, fontWeight: 600 }}>G·ALERTS</span>;
+    if (src === "bing") return <span style={{ fontSize: 8, background: "rgba(99,153,34,0.15)", color: "#3B6D11", padding: "0 4px", borderRadius: 3, marginLeft: 4, fontWeight: 600 }}>BING</span>;
+    return null;
   };
 
   return (
@@ -136,20 +166,16 @@ export default function SentimentPage() {
           <div className="tt">Discourse NLP monitor · BM + EN</div>
           <div className="tm">NLP pipeline · real-time sentiment & keyword extraction</div>
         </div>
-        <div className="badges">
-          {bingLive ? (
-            <span className="bdg bdg-g" style={{ gap: 4 }}>
-              <Wifi size={9} />
-              LIVE · Bing News
-            </span>
-          ) : (
-            <span className="bdg" style={{ background: "var(--color-background-secondary)", color: "var(--color-text-tertiary)", gap: 4 }}>
-              <WifiOff size={9} />
-              Static data
-            </span>
-          )}
+        <div className="badges" style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {gTrendsLive
+            ? <span className="bdg bdg-g" style={{ gap: 3 }}><Wifi size={9} />Google Trends</span>
+            : <span className="bdg" style={{ background: "var(--color-background-secondary)", color: "var(--color-text-tertiary)", gap: 3 }}><WifiOff size={9} />Trends offline</span>
+          }
+          {bingLive && <span className="bdg bdg-g" style={{ gap: 3 }}><Wifi size={9} />Bing News</span>}
+          {alertsLive && <span className="bdg bdg-g" style={{ gap: 3 }}><Wifi size={9} />G·Alerts</span>}
         </div>
       </div>
+
       <div className="content">
         <div className="mrow m4">
           {(mData.length ? mData : [
@@ -167,21 +193,45 @@ export default function SentimentPage() {
         </div>
 
         <div className="g2">
+          {/* Trend chart */}
           <div className="card-d">
-            <div className="ch"><div><div className="ct">30-day sentiment trend</div><div className="cs">Child rights discourse · NLP pipeline</div></div></div>
-            <div className="tab-r">
-              {(["all", "marriage", "abuse"] as const).map(t => (
-                <div key={t} className={`tab ${activeTopic === t ? "on" : ""}`} onClick={() => setActiveTopic(t)}>
-                  {t === "all" ? "All topics" : t === "marriage" ? "Child marriage" : "Abuse"}
+            <div className="ch">
+              <div>
+                <div className="ct">
+                  {useGoogleTrends ? "30-day search attention · Google Trends" : "30-day sentiment trend"}
                 </div>
-              ))}
+                <div className="cs">
+                  {useGoogleTrends
+                    ? "MY · child marriage + penganiayaan kanak-kanak · index 0–100"
+                    : "Child rights discourse · NLP pipeline"}
+                  {useGoogleTrends && (
+                    <span style={{ marginLeft: 6, background: "rgba(99,153,34,0.15)", color: "#3B6D11", padding: "0 5px", borderRadius: 3, fontSize: 8, fontWeight: 600 }}>LIVE</span>
+                  )}
+                </div>
+              </div>
             </div>
-            <div style={{ position: "relative", height: 130 }}>
+            {!useGoogleTrends && (
+              <div className="tab-r">
+                {(["all", "marriage", "abuse"] as const).map(t => (
+                  <div key={t} className={`tab ${activeTopic === t ? "on" : ""}`} onClick={() => setActiveTopic(t)}>
+                    {t === "all" ? "All topics" : t === "marriage" ? "Child marriage" : "Abuse"}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ position: "relative", height: 140 }}>
               <Line data={trendChart} options={trendOpts} />
             </div>
-            <div className="src">Source: NLP pipeline · simulated on open multilingual corpus</div>
+            <div className="src">
+              {useGoogleTrends
+                ? "Source: Google Trends (unofficial scrape) · geo: MY · avg of 3 keywords · 1h cache"
+                : useDbTrend
+                  ? "Source: DB sentiment data · NLP pipeline"
+                  : "Source: NLP pipeline · simulated on open multilingual corpus (no live source connected)"}
+            </div>
           </div>
 
+          {/* Bing volume chart */}
           <div className="card-d">
             <div className="ch">
               <div>
@@ -192,22 +242,21 @@ export default function SentimentPage() {
                 </div>
               </div>
             </div>
-            <div style={{ position: "relative", height: 130 }}>
+            <div style={{ position: "relative", height: 140 }}>
               {bingTrend.length > 0 ? (
                 <Bar data={newsVolumeChart} options={newsVolumeOpts} />
               ) : (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", fontSize: 10, color: "var(--color-text-tertiary)" }}>
-                  Add BING_NEWS_API_KEY to .env to enable live news volume tracking
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", fontSize: 10, color: "var(--color-text-tertiary)", textAlign: "center", padding: "0 12px" }}>
+                  Add BING_NEWS_API_KEY to .env to enable live news volume chart
                 </div>
               )}
             </div>
-            <div className="src">
-              Source: Bing News Search API · keywords: perkahwinan kanak-kanak, child marriage, TASKA, hak kanak-kanak
-            </div>
+            <div className="src">Source: Bing News Search API · keywords: perkahwinan kanak-kanak, child marriage, TASKA, hak kanak-kanak</div>
           </div>
         </div>
 
         <div className="g2">
+          {/* Keyword cloud */}
           <div className="card-d">
             <div className="ch"><div><div className="ct">Keyword cloud — BM + EN</div><div className="cs">Top extracted terms this week</div></div></div>
             <div className="kw-cloud">
@@ -244,27 +293,31 @@ export default function SentimentPage() {
             <div className="src">Source: NLP extraction · illustrative on open corpus</div>
           </div>
 
+          {/* Merged discourse feed */}
           <div className="card-d">
             <div className="ch">
               <div>
                 <div className="ct">Classified discourse feed</div>
                 <div className="cs">
-                  {bingLive ? "Bing News · live · BM + EN · NLP sentiment tagging" : "Bahasa Melayu + English · NLP sentiment tagging"}
+                  {mergedLive
+                    ? [alertsLive && "Google Alerts", bingLive && "Bing News"].filter(Boolean).join(" + ") + " · BM + EN · live"
+                    : "Bahasa Melayu + English · NLP sentiment tagging"}
                 </div>
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-              {(fd as any[]).map((item, idx) => (
+              {fd.map((item, idx) => (
                 <div key={item.id ?? idx} className="fi">
                   <div className="fd" style={{ background: dotColor(item.sentiment, item.riskLevel) }}></div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="ft">
                       {item.content}
                       {item.url && (
-                        <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 5, color: "var(--color-text-tertiary)", verticalAlign: "middle" }}>
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4, color: "var(--color-text-tertiary)", verticalAlign: "middle" }}>
                           <ExternalLink size={9} />
                         </a>
                       )}
+                      {srcBadge(item._src)}
                       {" "}<span className={pillClass(item.sentiment, item.riskLevel)}>{pillText(item.sentiment, item.riskLevel)}</span>
                     </div>
                     <div className="fm">
@@ -282,9 +335,9 @@ export default function SentimentPage() {
                 </div>
               ))}
             </div>
-            {bingLive && (
+            {mergedLive && (
               <div className="src" style={{ marginTop: 6 }}>
-                Source: Bing News Search API · cached 1h · {bingItems.length} articles retrieved
+                {[alertsLive && `Google Alerts: ${alertsItems.length} items`, bingLive && `Bing: ${bingItems.length} articles`].filter(Boolean).join(" · ")} · 30min–1h cache
               </div>
             )}
           </div>

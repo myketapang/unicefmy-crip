@@ -4,6 +4,8 @@ import { createRouter, publicQuery, adminQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import * as schema from "@db/schema";
 import { fetchBingNewsFeed, buildNewsTrend } from "./lib/bing-news";
+import { fetchGoogleTrends30d } from "./lib/google-trends";
+import { fetchGoogleAlertsFeeds } from "./lib/google-alerts";
 
 export const cripRouter = createRouter({
   // ── Key Metrics ───────────────────────────────────────────────
@@ -242,6 +244,26 @@ export const cripRouter = createRouter({
       } catch (e) {
         console.error("[bing-news] fetch failed:", e);
         return { items: [], trend: [], live: false };
+      }
+    }),
+
+    googleTrend: publicQuery.query(async () => {
+      try {
+        const data = await fetchGoogleTrends30d();
+        return { data, live: data.length > 0 };
+      } catch (e) {
+        console.error("[google-trends] fetch failed:", e);
+        return { data: [], live: false };
+      }
+    }),
+
+    alertsFeed: publicQuery.query(async () => {
+      try {
+        const items = await fetchGoogleAlertsFeeds();
+        return { items, live: items.length > 0, count: items.length };
+      } catch (e) {
+        console.error("[google-alerts] fetch failed:", e);
+        return { items: [], live: false, count: 0 };
       }
     }),
   }),
